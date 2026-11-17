@@ -26,11 +26,11 @@
   <img src="docs/en/demo.gif" width="720" alt="Hovering the island opens the panel with open sessions, recent sessions with search and plan usage">
 </p>
 
-## Why
+## 💡 Why
 
 If you run Claude Code in more than one place, you know the routine. One session is in a terminal tab, two more are inside RubyMine, and another one finished ten minutes ago and has been waiting for you since. Finding the right one means alt-tabbing through everything, and checking how much of your 5-hour window is left means opening yet another thing.
 
-Claude Dock puts all of that in one spot right under the clock. The island shows a dot per running session (orange while it works, green when it's free, yellow when it's waiting on you) next to your current usage. Point at it and the panel opens. Click a session and its window comes to the front.
+Claude Dock puts all of that in one spot right under the clock. The island shows a dot per running session (🟠 orange while it works, 🟢 green when it's free, 🟡 yellow when it's waiting on you) next to your current usage. Point at it and the panel opens. Click a session and its window comes to the front.
 
 <p align="center">
   <img src="docs/en/island.png" width="400" alt="The island: one dot per session plus the usage percentage">
@@ -68,7 +68,7 @@ The + button lists the folders you've used recently. Pick one, or browse to any 
   <img src="docs/en/settings.png" width="860" alt="Settings sheet with switches">
 </p>
 
-The gear opens the settings. You can hide the usage on the island and turn each part of the usage panel on or off: plan badge, rings, 5h session, week, time marker and reset times. Two extras start hidden and can be switched on there: weekly limits per model, and a breakdown of where your usage went (Claude Code, chats, Cowork). The language follows your system, and you can change it in the same place.
+The gear opens the settings. You can hide the usage on the island, turn off update alerts and turn each part of the usage panel on or off: plan badge, rings, 5h session, week, time marker and reset times. Two extras start hidden and can be switched on there: weekly limits per model, and a breakdown of where your usage went (Claude Code, chats, Cowork). The language follows your system, and you can change it in the same place.
 
 ## Features
 
@@ -82,9 +82,10 @@ The gear opens the settings. You can hide the usage on the island and turn each 
 | Search | Filters past sessions by title or project and highlights the match |
 | Stays out of the way | Clicks pass through everywhere except the island and the open panel. Keyboard focus goes back to your previous window when the panel closes |
 | Light | Python standard library plus the GTK and WebKit your desktop already ships. Usage is fetched every 2 minutes, or right away when you hit refresh |
+| Updates itself | Shows when a new release is out and installs it with one click |
 | Two languages | English and Portuguese, following the system language |
 
-## Install
+## 📦 Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/krugerrgabriel/claude-dock/main/install.sh | sh
@@ -118,6 +119,15 @@ python3 ~/.local/share/claude-dock/install.py --uninstall
 
 This stops the dock and removes the command, the menu entry and the autostart entry. Your settings stay in `~/.config/claude-dock` in case you come back.
 </details>
+
+## 🔄 Updates
+
+Claude Dock checks GitHub for a new release when it starts and every 6 hours after that. When there is one, a blue arrow shows up on the island, and the usage column opens with a card at the top. Click Update and the dock downloads the release, swaps its files and reopens by itself. If you'd rather not be told, turn off "Update alerts" in the settings.
+
+<p align="center">
+  <img src="docs/en/island-update.png" width="400" alt="The island with the blue update arrow"><br>
+  <img src="docs/en/update.png" width="350" alt="Update card at the top of the usage column">
+</p>
 
 ## Using it
 
@@ -161,9 +171,9 @@ claude_dock/   sessions.py   live sessions and history, read straight from disk
 
 The window is transparent and has a fixed size. The page tells the Python side which rectangle is clickable at any moment (the island when closed, the panel when open), and the X11 input shape lets every other click through to whatever is underneath.
 
-## Privacy
+## 🔒 Privacy
 
-Session data stays on your machine. The only network request is the usage check, `GET https://api.anthropic.com/api/oauth/usage`, sent with the token Claude Code already stores in `~/.claude/.credentials.json`. From your transcripts, Claude Dock reads the session title, the folder, the git branch and the first message (used as a label when a session has no title yet). It never writes anything inside `~/.claude`.
+Session data stays on your machine. Claude Dock makes two network requests. One is the usage check, `GET https://api.anthropic.com/api/oauth/usage`, sent with the token Claude Code already stores in `~/.claude/.credentials.json`. The other asks GitHub for the latest release (`api.github.com/repos/krugerrgabriel/claude-dock/releases/latest`) and sends nothing about you. From your transcripts, Claude Dock reads the session title, the folder, the git branch and the first message (used as a label when a session has no title yet). It never writes anything inside `~/.claude`.
 
 ## Troubleshooting
 

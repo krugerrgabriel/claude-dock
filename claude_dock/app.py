@@ -21,7 +21,7 @@ import threading  # noqa: E402
 import cairo  # noqa: E402
 from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk, WebKit2  # noqa: E402
 
-from . import launch, sessions, usage, windows  # noqa: E402
+from . import launch, sessions, updater, usage, windows  # noqa: E402
 
 
 UI_DIR = Path(__file__).parent / "ui"
@@ -31,6 +31,9 @@ WIDTH, HEIGHT = 880, 720
 USAGE_INTERVAL_S = 120     # a extensão de uso já consulta a cada 60 s; não dobrar a pressão
 USAGE_STALE_S = 60         # ao abrir o painel, atualiza se o dado for mais velho que isso
 USAGE_MAX_BACKOFF_S = 600
+UPDATE_FIRST_S = 20           # primeira checagem de versão depois de abrir
+UPDATE_INTERVAL_S = 6 * 3600
+UPDATE_TIMEOUT_S = 120        # sem reabrir nesse tempo, considera que a atualização falhou
 LIVE_INTERVAL_MS = 1500
 HISTORY_INTERVAL_S = 8
 
@@ -51,6 +54,7 @@ DEFAULT_CONFIG = {
     "terminal": None,
     "language": "auto",           # auto (idioma do sistema), en ou pt
     "islandUsage": True,          # % de uso na ilha minimizada
+    "checkUpdates": True,         # avisa quando sai release nova no GitHub
     "usage": {                    # blocos da coluna de uso
         "plan": True,
         "rings": True,
@@ -98,6 +102,9 @@ class Dock:
         self.usage_loading = False
         self.usage_failures = 0
         self.usage_timer = None
+        self.update = None
+        self.update_at = 0
+        self.update_state = None   # None | "running" | "error"
 
         win = Gtk.ApplicationWindow(application=app, title="Claude Dock")
         win.set_decorated(False)
@@ -134,6 +141,8 @@ class Dock:
         win.show_all()
         GLib.timeout_add(LIVE_INTERVAL_MS, self._tick)
         self.refresh_usage()
+        GLib.timeout_add_seconds(UPDATE_FIRST_S, lambda: self.check_update() and False)
+        GLib.timeout_add_seconds(UPDATE_INTERVAL_S, self._update_tick)
 
     # ------------------------------------------------------------ janela
 
@@ -190,6 +199,58 @@ class Dock:
         self.refresh_usage()
         return False
 
+    # ---------------------------------------------------------- atualização
+
+    def _update_tick(self):
+        self.check_update()
+        return True  # o timer de 6 h continua; o de 20 s é removido abaixo
+
+    def check_update(self):
+        if not self.config.get("checkUpdates", True):
+            return
+        self.update_at = time.time()
+
+        def work():
+            result = updater.check()
+            GLib.idle_add(self._update_checked, result)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _update_checked(self, result):
+        if result is not None:  # falha de rede mantém o último resultado
+            self.update = result
+            self.push()
+        return False
+
+    def apply_update(self):
+        if self.update_state == "running":
+            return
+        self.update_state = "running"
+        self.push()
+
+        def work():
+            ok, must_quit = updater.apply()
+            GLib.idle_add(self._update_applied, ok, must_quit)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _update_applied(self, ok, must_quit):
+        if not ok:
+            self.update_state = "error"
+            self.push()
+        elif must_quit:
+            self.win.get_application().quit()
+        else:
+            # o install.sh fecha este dock e abre o novo; se nada acontecer, avisa
+            GLib.timeout_add_seconds(UPDATE_TIMEOUT_S, self._update_timeout)
+        return False
+
+    def _update_timeout(self):
+        if self.update_state == "running":
+            self.update_state = "error"
+            self.push()
+        return False
+
     # janela tipo dock não ganha teclado sozinha: pede o foco ao clicar na busca
     # e devolve pra janela anterior quando o painel fecha
     def _grab_focus(self):
@@ -235,6 +296,8 @@ class Dock:
             "config": self.config,
             "lang": self.lang(),
             "usageLoading": self.usage_loading,
+            "update": self.update if self.config.get("checkUpdates", True) else None,
+            "updateState": self.update_state,
         }, ensure_ascii=False)
         if payload != self.last_payload:
             self.last_payload = payload
@@ -265,6 +328,8 @@ class Dock:
                 self.push(force_history=True)
                 if not self.usage or time.time() - self.usage.get("fetchedAt", 0) > USAGE_STALE_S:
                     self.refresh_usage()
+                if time.time() - self.update_at > UPDATE_INTERVAL_S:
+                    self.check_update()
         elif kind == "focus":
             s = next((s for s in self.live if s["pid"] == msg.get("pid")), None)
             if s:
@@ -275,6 +340,12 @@ class Dock:
             launch.new_session(msg.get("cwd"), self.config.get("terminal"))
         elif kind == "setConfig":
             self._set_config(msg.get("key", ""), msg.get("value"))
+        elif kind == "applyUpdate":
+            self.apply_update()
+        elif kind == "openUrl":
+            url = msg.get("url") or ""
+            if url.startswith("https://github.com/"):
+                Gio.AppInfo.launch_default_for_uri(url, None)
         elif kind == "refreshUsage":
             self.refresh_usage()
         elif kind == "grabFocus":

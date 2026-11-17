@@ -26,11 +26,11 @@
   <img src="docs/pt/demo.gif" width="720" alt="Passar o mouse na ilha abre o painel com as sessões abertas, as recentes com busca e o uso do plano">
 </p>
 
-## Pra que serve
+## 💡 Pra que serve
 
 Quem roda o Claude Code em mais de um lugar conhece a rotina. Uma sessão está numa aba do terminal, outras duas estão dentro do RubyMine, e mais uma terminou faz dez minutos e está te esperando desde então. Achar a certa é ficar dando alt-tab em tudo, e ver quanto sobrou da janela de 5 horas é abrir mais uma coisa.
 
-O Claude Dock junta tudo isso num lugar só, logo abaixo do relógio. A ilha mostra uma bolinha por sessão rodando (laranja enquanto trabalha, verde quando está livre, amarela quando está esperando você) ao lado do seu consumo atual. Aponte pra ela e o painel abre. Clique numa sessão e a janela dela vem pra frente.
+O Claude Dock junta tudo isso num lugar só, logo abaixo do relógio. A ilha mostra uma bolinha por sessão rodando (🟠 laranja enquanto trabalha, 🟢 verde quando está livre, 🟡 amarela quando está esperando você) ao lado do seu consumo atual. Aponte pra ela e o painel abre. Clique numa sessão e a janela dela vem pra frente.
 
 <p align="center">
   <img src="docs/pt/island.png" width="400" alt="A ilha: uma bolinha por sessão e a porcentagem de uso">
@@ -68,7 +68,7 @@ O botão + lista as pastas que você usou por último. Escolha uma, ou procure q
   <img src="docs/pt/settings.png" width="860" alt="Configurações com chaves de liga e desliga">
 </p>
 
-A engrenagem abre as configurações. Dá pra esconder o uso da ilha e ligar ou desligar cada parte do painel de uso: selo do plano, anéis, sessão de 5h, semana, marcador de tempo e quando reseta. Dois extras começam desligados e podem ser ativados ali: os limites semanais por modelo e a divisão de onde o consumo foi gasto (Claude Code, chats, Cowork). O idioma segue o do sistema, e também dá pra trocar ali.
+A engrenagem abre as configurações. Dá pra esconder o uso da ilha, desligar o aviso de atualização e ligar ou desligar cada parte do painel de uso: selo do plano, anéis, sessão de 5h, semana, marcador de tempo e quando reseta. Dois extras começam desligados e podem ser ativados ali: os limites semanais por modelo e a divisão de onde o consumo foi gasto (Claude Code, chats, Cowork). O idioma segue o do sistema, e também dá pra trocar ali.
 
 ## Recursos
 
@@ -82,9 +82,10 @@ A engrenagem abre as configurações. Dá pra esconder o uso da ilha e ligar ou 
 | Busca | Filtra as sessões anteriores por título ou projeto e realça o trecho encontrado |
 | Não atrapalha | O clique passa direto em tudo, menos na ilha e no painel aberto. O foco do teclado volta pra janela em que você estava quando o painel fecha |
 | Leve | Biblioteca padrão do Python mais o GTK e o WebKit que o seu desktop já tem. O uso é consultado a cada 2 minutos, ou na hora quando você clica em atualizar |
+| Se atualiza | Avisa quando sai versão nova e instala com um clique |
 | Dois idiomas | Inglês e português, seguindo o idioma do sistema |
 
-## Instalação
+## 📦 Instalação
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/krugerrgabriel/claude-dock/main/install.sh | sh
@@ -118,6 +119,15 @@ python3 ~/.local/share/claude-dock/install.py --uninstall
 
 Fecha o dock e remove o comando, o atalho do menu e a inicialização automática. Suas configurações ficam em `~/.config/claude-dock`, caso você volte.
 </details>
+
+## 🔄 Atualizações
+
+O Claude Dock consulta o GitHub atrás de versão nova quando abre e depois a cada 6 horas. Quando sai uma, aparece uma setinha azul na ilha, e a coluna de uso ganha um cartão no topo. Clique em Atualizar e o dock baixa a versão, troca os arquivos e reabre sozinho. Se não quiser o aviso, desligue "Avisar atualizações" nas configurações.
+
+<p align="center">
+  <img src="docs/pt/island-update.png" width="400" alt="A ilha com a seta azul de atualização"><br>
+  <img src="docs/pt/update.png" width="350" alt="Cartão de atualização no topo da coluna de uso">
+</p>
 
 ## Como usar
 
@@ -161,9 +171,9 @@ claude_dock/   sessions.py   sessões ao vivo e histórico, lidos direto do disc
 
 A janela é transparente e tem tamanho fixo. A página avisa o Python qual retângulo pode receber clique a cada momento (a ilha quando fechado, o painel quando aberto), e o input shape do X11 deixa todos os outros cliques passarem pro que estiver embaixo.
 
-## Privacidade
+## 🔒 Privacidade
 
-Os dados das sessões não saem da sua máquina. A única requisição de rede é a consulta de uso, `GET https://api.anthropic.com/api/oauth/usage`, feita com o token que o Claude Code já guarda em `~/.claude/.credentials.json`. Dos seus transcripts, o Claude Dock lê o título da sessão, a pasta, a branch do git e a primeira mensagem (usada como nome quando a sessão ainda não tem título). Ele nunca escreve nada dentro de `~/.claude`.
+Os dados das sessões não saem da sua máquina. O Claude Dock faz duas requisições de rede. Uma é a consulta de uso, `GET https://api.anthropic.com/api/oauth/usage`, feita com o token que o Claude Code já guarda em `~/.claude/.credentials.json`. A outra pergunta ao GitHub qual é a última versão (`api.github.com/repos/krugerrgabriel/claude-dock/releases/latest`) e não envia nada sobre você. Dos seus transcripts, o Claude Dock lê o título da sessão, a pasta, a branch do git e a primeira mensagem (usada como nome quando a sessão ainda não tem título). Ele nunca escreve nada dentro de `~/.claude`.
 
 ## Problemas comuns
 

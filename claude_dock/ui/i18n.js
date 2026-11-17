@@ -90,6 +90,16 @@ window.I18N = {
     setSpentHint: "Split between Claude Code, Cowork…",
     setLanguage: "Language",
     langAuto: "Auto",
+    setUpdates: "Update alerts",
+    setUpdatesHint: "Tell me when a new version is out",
+
+    updateTip: "Update available",
+    updateTitle: "Version {v} is out",
+    updateCurrent: "You have {v}",
+    updateBtn: "Update",
+    updateRunning: "Updating…",
+    updateNotes: "What's new",
+    updateError: "Couldn't update. Try again, or run the install line from the README.",
   },
 
   pt: {
@@ -182,5 +192,15 @@ window.I18N = {
     setSpentHint: "Divisão entre Claude Code, Cowork…",
     setLanguage: "Idioma",
     langAuto: "Automático",
+    setUpdates: "Avisar atualizações",
+    setUpdatesHint: "Mostra quando sair uma versão nova",
+
+    updateTip: "Atualização disponível",
+    updateTitle: "Versão {v} disponível",
+    updateCurrent: "Você está na {v}",
+    updateBtn: "Atualizar",
+    updateRunning: "Atualizando…",
+    updateNotes: "Novidades",
+    updateError: "Não deu pra atualizar. Tente de novo ou rode a linha de instalação do README.",
   },
 };

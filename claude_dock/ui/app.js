@@ -354,6 +354,7 @@
   const SETTINGS = [
     { title: "setDock", items: [
       ["islandUsage", "setIsland", "setIslandHint"],
+      ["checkUpdates", "setUpdates", "setUpdatesHint"],
     ] },
     { title: "setPanel", items: [
       ["usage.plan", "setPlan", "setPlanHint"],
@@ -560,9 +561,46 @@
     post("refreshUsage");
   });
 
+  // ---------------------------------------------------------- atualização
+  let updateKey = "";
+  function renderUpdate() {
+    const u = state.update && state.update.available ? state.update : null;
+    const st = state.updateState;
+    const key = JSON.stringify([u, st, state.lang]);
+    if (key === updateKey) return;
+    updateKey = key;
+
+    const badge = $("#island-update");
+    badge.hidden = !u;
+    badge.title = u ? t("updateTip") : "";
+    if (!open) requestAnimationFrame(sendShape);
+
+    const box = $("#u-update");
+    if (!u) { box.innerHTML = ""; return; }
+    const running = st === "running";
+    box.innerHTML = `
+      <div class="update-card ${running ? "running" : ""}">
+        <div class="uc-icon"><svg viewBox="0 0 24 24"><path d="M12 18V6M6.5 11.5L12 6l5.5 5.5"/></svg></div>
+        <div class="uc-text">
+          <b>${esc(t("updateTitle", { v: u.latest }))}</b>
+          <span>${esc(t("updateCurrent", { v: u.current }))} · <a href="#" class="uc-notes">${t("updateNotes")}</a></span>
+        </div>
+        <button class="uc-btn" ${running ? "disabled" : ""}>${running ? `<i class="uc-spin"></i>${t("updateRunning")}` : t("updateBtn")}</button>
+      </div>
+      ${st === "error" ? `<div class="uc-err">${esc(t("updateError"))}</div>` : ""}`;
+    fitHeight();
+  }
+  $("#u-update").addEventListener("click", (e) => {
+    const u = state.update;
+    if (!u) return;
+    if (e.target.closest(".uc-notes")) { e.preventDefault(); post("openUrl", { url: u.url }); return; }
+    if (e.target.closest(".uc-btn")) { state.updateState = "running"; updateKey = ""; renderUpdate(); post("applyUpdate"); }
+  });
+
   window.dockUpdate = (data) => {
     state = data;
     applyStatic();
+    renderUpdate();
     if (body.classList.contains("settings")) renderSettings();
     renderUsage();
     renderIsland();
@@ -588,6 +626,7 @@
     if (t === "recent" || t === "live") setTimeout(() => setTab(t), 300);
     if (t === "sheet") setTimeout(openSheet, 300);
     if (t === "settings") setTimeout(openSettings, 300);
+    if (t === "applyUpdate") setTimeout(() => post("applyUpdate"), 300);
     if (t && t.startsWith("q:")) setTimeout(() => { setTab("recent"); $("#search").value = t.slice(2); renderHistory(); fitHeight(); }, 300);
     if (t === "focus") setTimeout(() => { setTab("recent"); post("grabFocus"); $("#search").focus(); }, 400);
     if (t === "focus") setTimeout(() => setOpen(false), 1800);
@@ -597,7 +636,9 @@
   // abre ui/index.html?lang=en&view=recent&q=api num navegador (usado pros prints do README)
   if (!bridge && window.dockDemo) {
     const params = new URLSearchParams(location.search);
-    window.dockUpdate(window.dockDemo(params.get("lang") || "en"));
+    const demo = window.dockDemo(params.get("lang") || "en");
+    if (params.get("update")) demo.update = { available: true, current: "1.0.0", latest: "1.1.0", url: "https://github.com/krugerrgabriel/claude-dock/releases", method: "installer" };
+    window.dockUpdate(demo);
     const view = params.get("view");
     if (params.get("closed") === null) setOpen(true);
     if (view === "recent") setTab("recent");

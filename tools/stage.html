@@ -79,6 +79,7 @@
   const view = p.get("view") || "live";
   if (view === "closed") q.set("closed", "1"); else if (view !== "live") q.set("view", view);
   if (p.get("q")) q.set("q", p.get("q"));
+  if (p.get("update")) q.set("update", "1");
   document.getElementById("dock").src = "../claude_dock/ui/index.html?" + q;
 </script>
 </body>

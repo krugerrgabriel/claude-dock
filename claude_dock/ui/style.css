@@ -383,7 +383,7 @@ body.open .usage { opacity: 1; transform: none; transition: opacity .3s ease .16
 .rings-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
 .big { font-size: 40px; font-weight: 700; letter-spacing: -.045em; line-height: 1; font-variant-numeric: tabular-nums; }
 .big small { font-size: 19px; font-weight: 600; opacity: .6; margin-left: 1px; }
-.big-label { font-size: 11.5px; line-height: 1.25; color: var(--label-2); margin: 5px auto 0; max-width: 84px; }
+.big-label { font-size: 11.5px; line-height: 1.25; color: var(--label-2); margin: 5px auto 0; max-width: 98px; }
 
 /* linhas de estatística */
 .stat { position: relative; padding: 12px 14px 11px; }
@@ -475,3 +475,69 @@ body.settings #settings { transform: none; transition: transform .55s var(--spri
 .lang-seg { grid-template-columns: repeat(var(--n), 1fr); margin: 0 0 12px; }
 .lang-seg button { border-radius: 8px; transition: background .2s, color .2s; }
 .lang-seg button.on { background: rgba(99, 99, 102, .9); color: var(--label); box-shadow: 0 3px 8px rgba(0, 0, 0, .18), inset 0 .5px 0 rgba(255, 255, 255, .14); }
+
+/* ============================================================ atualização */
+
+.island-update {
+  position: relative;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center; flex: none;
+  background: linear-gradient(160deg, #4aa8ff, #6e5bff);
+  box-shadow: 0 0 8px rgba(80, 140, 255, .7);
+  margin-left: 1px;
+}
+.island-update[hidden] { display: none; }
+.island-update svg { width: 10px; height: 10px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.island-update::after {
+  content: ""; position: absolute; inset: -2px; border-radius: 50%;
+  border: 1.5px solid rgba(110, 160, 255, .8);
+  animation: ping 2.2s ease-out infinite;
+}
+@keyframes ping { 0% { transform: scale(.85); opacity: .9; } 80%, 100% { transform: scale(1.3); opacity: 0; } }
+
+.update-card {
+  position: relative;
+  display: flex; align-items: center; gap: 11px;
+  margin: 10px 0 4px; padding: 11px 11px 11px 12px;
+  border-radius: 16px;
+  background:
+    linear-gradient(rgba(36, 38, 56, .96), rgba(30, 30, 44, .96)) padding-box,
+    linear-gradient(120deg, #4aa8ff, #9b6bff, #ff7ab6) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 8px 26px -10px rgba(90, 120, 255, .65);
+  overflow: hidden;
+}
+.update-card::after { /* reflexo que passa de tempos em tempos */
+  content: ""; position: absolute; top: 0; bottom: 0; width: 60px; left: -80px;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .12), transparent);
+  animation: sweep 4.5s ease-in-out infinite 1s;
+}
+@keyframes sweep { 0% { left: -80px; } 35%, 100% { left: 110%; } }
+.uc-icon {
+  flex: none; width: 34px; height: 34px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: linear-gradient(160deg, #4aa8ff, #6e5bff);
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .35), 0 4px 12px -4px rgba(80, 130, 255, .8);
+}
+.uc-icon svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.update-card.running .uc-icon svg { animation: rise 1s ease-in-out infinite; }
+@keyframes rise { 50% { transform: translateY(-3px); } }
+.uc-text { flex: 1; min-width: 0; }
+.uc-text b { display: block; font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; }
+.uc-text span { display: block; font-size: 11.5px; line-height: 1.35; color: var(--label-2); margin-top: 2px; }
+.uc-notes { color: #8ab8ff; text-decoration: none; font-weight: 600; }
+.uc-notes:hover { text-decoration: underline; }
+.uc-btn {
+  flex: none; height: 30px; padding: 0 13px; border-radius: 15px;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 700; color: #fff;
+  background: linear-gradient(160deg, #4aa8ff, #6e5bff);
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .35), 0 4px 14px -4px rgba(80, 130, 255, .9);
+  transition: transform .2s var(--spring), filter .15s;
+  position: relative; z-index: 1;
+}
+.uc-btn:hover { filter: brightness(1.1); }
+.uc-btn:active { transform: scale(.95); }
+.uc-btn[disabled] { cursor: default; filter: saturate(.7); }
+.uc-spin { width: 11px; height: 11px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: spin .8s linear infinite; }
+.uc-err { font-size: 11.5px; color: var(--red); padding: 4px 4px 0; line-height: 1.4; }
