@@ -1,0 +1,21 @@
+name: release-asset
+
+# Toda release publicada ganha o claude-dock.tar.gz que o install.sh baixa.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tarball
+        run: git archive --format=tar.gz --prefix=claude-dock/ -o claude-dock.tar.gz HEAD
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" claude-dock.tar.gz --clobber

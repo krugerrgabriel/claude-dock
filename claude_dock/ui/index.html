@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claude Dock</title>
+<link rel="stylesheet" href="style.css">
+<script src="i18n.js"></script>
+</head>
+<body>
+  <!-- ilha: o que fica visível com o painel fechado -->
+  <button id="island" aria-label="Claude sessions">
+    <svg class="island-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l1.6 6.1 5.6-3.1-3.1 5.6 6.1 1.6-6.1 1.6 3.1 5.6-5.6-3.1L12 22.5l-1.6-6.1-5.6 3.1 3.1-5.6-6.1-1.6 6.1-1.6-3.1-5.6 5.6 3.1z"/></svg>
+    <span id="dots" class="dots"></span>
+    <span id="island-usage" class="island-usage"></span>
+  </button>
+
+  <section id="panel" aria-hidden="true">
+    <div class="tint"></div>
+
+    <div class="content">
+      <header class="head">
+        <div>
+          <h1>Claude</h1>
+          <p id="summary"></p>
+        </div>
+        <button id="new" class="round" data-i18n-aria="newSession">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </header>
+
+      <div class="seg" role="tablist">
+        <span class="seg-thumb"></span>
+        <button data-tab="live" role="tab"><span data-i18n="tabOpen"></span><span id="nlive" class="seg-n"></span></button>
+        <button data-tab="recent" role="tab" data-i18n="tabRecent"></button>
+      </div>
+
+      <div class="views">
+        <div class="view" data-view="live">
+          <div id="live"></div>
+        </div>
+        <div class="view" data-view="recent">
+          <label class="search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+            <input id="search" type="text" data-i18n-ph="search" spellcheck="false" autocomplete="off">
+          </label>
+          <div id="history"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- coluna direita: consumo do plano -->
+    <aside class="usage">
+      <div class="u-head">
+        <div class="u-title">
+          <h1 data-i18n="usage"></h1>
+          <span id="u-plan" class="plan"></span>
+        </div>
+        <div class="u-actions">
+          <button id="u-settings" class="round" data-i18n-aria="settings">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </button>
+          <button id="u-refresh" class="round" data-i18n-aria="refreshUsage">
+            <svg viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 11-2.2-5.3M19.5 4.5v4.2h-4.2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="u-body" class="u-body"></div>
+      <div id="u-foot" class="u-foot"></div>
+    </aside>
+
+    <!-- folha "configurações" (sobre a coluna de uso) -->
+    <div id="settings" class="sheet sheet-right">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 data-i18n="settings"></h2>
+        <button id="settings-close" class="round small" data-i18n-aria="close">
+          <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+        </button>
+      </div>
+      <div id="settings-body"></div>
+    </div>
+
+    <!-- folha "nova sessão" -->
+    <div id="scrim"></div>
+    <div id="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 data-i18n="newSession"></h2>
+        <button id="sheet-close" class="round small" data-i18n-aria="close">
+          <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+        </button>
+      </div>
+      <p class="sheet-sub" data-i18n="sheetSub"></p>
+      <ul id="folders" class="group"></ul>
+      <ul class="group">
+        <li id="pick" class="row">
+          <span class="tile tile-folder"><svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 012-2h4l2 2h7a2 2 0 012 2v7.5a2 2 0 01-2 2h-13a2 2 0 01-2-2z"/></svg></span>
+          <div class="row-text"><div class="row-title" data-i18n="pickFolder"></div></div>
+          <span class="chev"></span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+<script src="demo.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
