@@ -21,6 +21,19 @@ TERMINALS = {
 }
 
 
+CLICK_ACTIONS = ("open", "copyCli", "copySlash")
+
+
+def resume_text(session_id, cwd, mode="copyCli"):
+    """O que vai pra área de transferência: comando de shell ou /resume pro Claude aberto."""
+    if not _UUID.match(session_id or ""):
+        return None
+    if mode == "copySlash":
+        return f"/resume {session_id}"
+    cmd = f"claude --resume {session_id}"
+    return f"cd {shlex.quote(cwd)} && {cmd}" if cwd and os.path.isdir(cwd) else cmd
+
+
 def pick_terminal(preferred=None):
     if preferred and preferred in TERMINALS and shutil.which(preferred):
         return preferred

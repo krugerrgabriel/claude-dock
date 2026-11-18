@@ -108,7 +108,7 @@
     // scrollHeight nunca fica menor que a área visível; mede pelo último filho
     const last = view && view.lastElementChild;
     const contentH = last ? last.offsetTop + last.offsetHeight + 18 : 0;
-    let h = contentH + $(".views").offsetTop;
+    let h = contentH + $(".views").offsetTop + $(".dock-foot").offsetHeight;
     if (body.classList.contains("sheet")) h = Math.max(h, $("#sheet").scrollHeight + 90);
     if (body.classList.contains("settings")) h = Math.max(h, $("#settings").scrollHeight + 16);
     const ulast = $("#u-body").lastElementChild;
@@ -329,9 +329,18 @@
   });
   $("#history").addEventListener("click", (e) => {
     const li = e.target.closest("li[data-sid]");
-    if (li) act("resume", { sessionId: li.dataset.sid, cwd: li.dataset.cwd }, li);
+    if (!li) return;
+    const mode = clickMode();
+    if (mode === "open") { act("resume", { sessionId: li.dataset.sid, cwd: li.dataset.cwd }, li); return; }
+    // modo copiar: o Python põe na área de transferência; a linha confirma e o painel fecha
+    post("resume", { sessionId: li.dataset.sid, cwd: li.dataset.cwd });
+    const sub = li.querySelector(".row-sub");
+    if (sub) { sub.textContent = t(mode === "copySlash" ? "copiedSlash" : "copiedCli"); sub.classList.add("copied"); }
+    li.classList.remove("tap"); void li.offsetWidth; li.classList.add("tap");
+    setTimeout(() => setOpen(false), 650);
   });
   $("#search").addEventListener("input", () => { renderHistory(); fitHeight(); });
+  $("#see-all").addEventListener("click", (e) => act("openLibrary", {}, e.currentTarget));
 
   // ================================================================ uso
 
@@ -383,10 +392,20 @@
     renderSettings();
     renderUsage(true);
   }
+  const CLICKS = ["open", "copyCli", "copySlash"];
+  function clickMode() {
+    const m = state.config && state.config.clickAction;
+    return CLICKS.includes(m) ? m : "open";
+  }
   function renderSettings() {
     const langNow = (state.config && state.config.language) || "auto";
+    const cm = clickMode();
     const langs = [["auto", t("langAuto")], ["en", "English"], ["pt", "Português"]];
-    $("#settings-body").innerHTML = SETTINGS.map((sec) => `
+    $("#settings-body").innerHTML = `
+      <div class="section-title">${t("setClick")}</div>
+      <div class="seg lang-seg" style="--n:${CLICKS.length}">${CLICKS.map((m) =>
+        `<button data-click="${m}" class="${m === cm ? "on" : ""}">${t(`click_${m}`)}</button>`).join("")}</div>
+      <p class="set-hint">${t(`click_${cm}Hint`)}</p>` + SETTINGS.map((sec) => `
       <div class="section-title">${t(sec.title)}</div>
       <ul class="group">${sec.items.map(([key, label, hint]) => `
         <li class="toggle-row" data-key="${key}">
@@ -402,6 +421,8 @@
     if (row) setCfg(row.dataset.key, !getCfg(row.dataset.key));
     const lb = e.target.closest("[data-lang]");
     if (lb) setCfg("language", lb.dataset.lang);
+    const cb = e.target.closest("[data-click]");
+    if (cb) setCfg("clickAction", cb.dataset.click);
   });
   function openSettings() { renderSettings(); body.classList.add("settings"); fitHeight(); }
   function closeSettings() { body.classList.remove("settings"); fitHeight(); }
@@ -608,6 +629,7 @@
     renderLive();
     renderHistory();
     renderFolders();
+    $("#see-all-sub").textContent = t("seeAllSub");
     fitHeight();
   };
 

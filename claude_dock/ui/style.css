@@ -290,6 +290,32 @@ mark {
 }
 .search input::placeholder { color: var(--label-3); }
 
+/* atalho pra janela com todas as sessões: fixo no rodapé da coluna, nas duas abas */
+.dock-foot {
+  flex: none; position: relative;
+  padding: 8px 4px 14px;
+}
+.dock-foot::before {
+  content: ""; position: absolute; left: 4px; right: 4px; top: -18px; height: 18px;
+  background: linear-gradient(to bottom, transparent, rgba(30, 30, 35, .9));
+  pointer-events: none;
+}
+.see-all {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  min-height: 54px; padding: 9px 14px 9px 12px;
+  border-radius: 16px; text-align: left;
+  background: var(--fill);
+  transition: background .12s;
+}
+.see-all:hover { background: rgba(255, 255, 255, .11); }
+.see-all:active { background: rgba(255, 255, 255, .15); }
+.tile-all { background: linear-gradient(160deg, #ffad73, #e2643a); }
+.tile-all svg { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }
+.see-all-text { flex: 1; min-width: 0; }
+.see-all-text b { display: block; font-size: 14px; font-weight: 600; }
+.see-all-text span { display: block; font-size: 12px; color: var(--label-2); margin-top: 2px; }
+.see-all-text span:empty { display: none; }
+
 /* vazio */
 .empty { padding: 56px 24px; text-align: center; }
 .empty-ico {
@@ -473,6 +499,9 @@ body.settings #settings { transform: none; transition: transform .55s var(--spri
 
 /* seletor de idioma nas configurações */
 .lang-seg { grid-template-columns: repeat(var(--n), 1fr); margin: 0 0 12px; }
+.lang-seg button { white-space: nowrap; font-size: 12.5px; }
+.set-hint { font-size: 12px; color: var(--label-3); line-height: 1.45; padding: 0 6px 14px; margin-top: -4px; }
+.row-sub.copied { color: var(--green); }
 .lang-seg button { border-radius: 8px; transition: background .2s, color .2s; }
 .lang-seg button.on { background: rgba(99, 99, 102, .9); color: var(--label); box-shadow: 0 3px 8px rgba(0, 0, 0, .18), inset 0 .5px 0 rgba(255, 255, 255, .14); }
 

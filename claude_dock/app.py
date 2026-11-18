@@ -21,7 +21,7 @@ import threading  # noqa: E402
 import cairo  # noqa: E402
 from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk, WebKit2  # noqa: E402
 
-from . import launch, sessions, updater, usage, windows  # noqa: E402
+from . import launch, library, sessions, updater, usage, windows  # noqa: E402
 
 
 UI_DIR = Path(__file__).parent / "ui"
@@ -36,9 +36,18 @@ UPDATE_INTERVAL_S = 6 * 3600
 UPDATE_TIMEOUT_S = 120        # sem reabrir nesse tempo, considera que a atualização falhou
 LIVE_INTERVAL_MS = 1500
 HISTORY_INTERVAL_S = 8
+HISTORY_IDLE_S = 30        # fechado: mantém o histórico morno sem pesar
 
 
 LANGS = ("en", "pt")
+
+
+def copy_to_clipboard(text):
+    if not text:
+        return
+    cb = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+    cb.set_text(text, -1)
+    cb.store()
 
 
 def system_language():
@@ -97,6 +106,7 @@ class Dock:
         self.history = []
         self.last_payload = None
         self.history_at = 0
+        self.history_busy = False
         self.focus_prev = None
         self.usage = None
         self.usage_loading = False
@@ -105,6 +115,9 @@ class Dock:
         self.update = None
         self.update_at = 0
         self.update_state = None   # None | "running" | "error"
+        self.library = None        # janela "todas as sessões", quando aberta
+        self.live_sig = None
+        self.store = library.Store(self.config.get("sessionsManagerDir"))
 
         win = Gtk.ApplicationWindow(application=app, title="Claude Dock")
         win.set_decorated(False)
@@ -139,10 +152,19 @@ class Dock:
         self._place()
         Gdk.Screen.get_default().connect("monitors-changed", lambda *_: self._place())
         win.show_all()
+        threading.Thread(target=self._warm, daemon=True).start()
         GLib.timeout_add(LIVE_INTERVAL_MS, self._tick)
         self.refresh_usage()
         GLib.timeout_add_seconds(UPDATE_FIRST_S, lambda: self.check_update() and False)
         GLib.timeout_add_seconds(UPDATE_INTERVAL_S, self._update_tick)
+
+    def _warm(self):
+        # cache do disco + leitura de tudo em segundo plano: quando o painel ou a
+        # janela de sessões abrir, os transcripts já estão em memória
+        sessions.load_cache()
+        GLib.idle_add(lambda: self.push(force_history=True) and False)
+        sessions.warm_all()
+        sessions.save_cache()
 
     # ------------------------------------------------------------ janela
 
@@ -283,10 +305,14 @@ class Dock:
 
     def push(self, force_history=False):
         self.live = sessions.live_sessions()
+        sig = [(s["sessionId"], s["status"]) for s in self.live]
+        if self.library and sig != self.live_sig:
+            self.library.live_changed()
+        self.live_sig = sig
         now = GLib.get_monotonic_time() / 1e6
-        if self.expanded and (force_history or now - self.history_at > HISTORY_INTERVAL_S):
-            self.history = sessions.history([s["sessionId"] for s in self.live])
-            self.history_at = now
+        every = HISTORY_INTERVAL_S if self.expanded else HISTORY_IDLE_S
+        if force_history or now - self.history_at > every:
+            self._load_history()
         payload = json.dumps({
             "live": self.live,
             "history": self.history,
@@ -298,10 +324,64 @@ class Dock:
             "usageLoading": self.usage_loading,
             "update": self.update if self.config.get("checkUpdates", True) else None,
             "updateState": self.update_state,
+            "librarySynced": self.store.shared,
         }, ensure_ascii=False)
         if payload != self.last_payload:
             self.last_payload = payload
             self.view.run_javascript(f"window.dockUpdate && window.dockUpdate({payload})", None, None, None)
+
+    def _load_history(self):
+        # lê os transcripts fora da thread da interface: o painel abre na hora com
+        # o que já tem e se atualiza quando a leitura termina
+        if self.history_busy:
+            return
+        self.history_busy = True
+        self.history_at = GLib.get_monotonic_time() / 1e6
+        exclude = [s["sessionId"] for s in self.live]
+
+        def work():
+            try:
+                hist = self._named(sessions.history(exclude))
+                sessions.save_cache()
+            except Exception:  # noqa: BLE001 - nunca derrubar o dock por um transcript estranho
+                hist = None
+            GLib.idle_add(self._history_done, hist)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _history_done(self, hist):
+        self.history_busy = False
+        if hist is not None and hist != self.history:
+            self.history = hist
+            self.push()
+        return False
+
+    def _named(self, hist):
+        # nomes dados no gerenciador valem aqui também; o que está na lixeira some
+        meta = self.store.names()
+        out = []
+        for h in hist:
+            m = meta.get(h["sessionId"]) or {}
+            if m.get("deleted"):
+                continue
+            if isinstance(m.get("name"), str) and m["name"].strip():
+                h = {**h, "title": m["name"].strip()}
+            out.append(h)
+        return out
+
+    # ------------------------------------------------------- todas as sessões
+
+    def open_library(self):
+        if self.library:
+            self.library.present()
+            return
+        from .library_window import LibraryWindow
+        self.library = LibraryWindow(self)
+
+    def library_closed(self):
+        self.library = None
+
+    def save(self):
+        save_config(self.config)
 
     # ------------------------------------------------------------ bridge
 
@@ -316,8 +396,10 @@ class Dock:
         if kind == "ready":
             self.last_payload = None
             self.push(force_history=True)
-            peek = os.environ.get("CLAUDE_DOCK_PEEK")  # debug: abre sozinho (valor = aba)
-            if peek:
+            peek = os.environ.get("CLAUDE_DOCK_PEEK", "")  # debug: abre sozinho (valor = aba)
+            if peek.startswith("library"):
+                GLib.idle_add(lambda: self.open_library() and False)
+            elif peek:
                 GLib.timeout_add(700, lambda: self.view.run_javascript(
                     f"window.dockDebugOpen({json.dumps(peek)})", None, None, None) and False)
         elif kind == "shape":
@@ -335,11 +417,17 @@ class Dock:
             if s:
                 windows.focus(s)
         elif kind == "resume":
-            launch.resume(msg.get("sessionId"), msg.get("cwd"), self.config.get("terminal"))
+            mode = self.click_action()
+            if mode == "open" or msg.get("force"):
+                launch.resume(msg.get("sessionId"), msg.get("cwd"), self.config.get("terminal"))
+            else:
+                copy_to_clipboard(launch.resume_text(msg.get("sessionId"), msg.get("cwd"), mode))
         elif kind == "new":
             launch.new_session(msg.get("cwd"), self.config.get("terminal"))
         elif kind == "setConfig":
             self._set_config(msg.get("key", ""), msg.get("value"))
+        elif kind == "openLibrary":
+            self.open_library()
         elif kind == "applyUpdate":
             self.apply_update()
         elif kind == "openUrl":
@@ -355,6 +443,10 @@ class Dock:
         elif kind == "pickFolder":
             GLib.idle_add(self._pick_folder)
 
+    def click_action(self):
+        mode = self.config.get("clickAction")
+        return mode if mode in launch.CLICK_ACTIONS else "open"
+
     def lang(self):
         choice = self.config.get("language") or "auto"
         return choice if choice in LANGS else system_language()
@@ -366,6 +458,14 @@ class Dock:
                 self.config["language"] = value
                 save_config(self.config)
                 self.push()
+            return
+        if key == "clickAction":
+            if value in launch.CLICK_ACTIONS:
+                self.config["clickAction"] = value
+                save_config(self.config)
+                self.push()
+                if self.library:
+                    self.library.refresh(reload=False)
             return
         if not isinstance(value, bool) or not key:
             return

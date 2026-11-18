@@ -15,6 +15,7 @@ SESSIONS_DIR = CLAUDE_DIR / "sessions"
 PROJECTS_DIR = CLAUDE_DIR / "projects"
 
 HEAD_LINES = 400          # linhas lidas do começo do transcript (cwd, 1ª mensagem)
+HEAD_SCAN_MAX = 3000      # teto pra sessões sem nenhuma mensagem do usuário
 TAIL_BYTES = 256 * 1024   # bytes lidos do fim (título mais recente)
 HISTORY_LIMIT = 60
 
@@ -92,6 +93,41 @@ def find_host(pid):
 # ----------------------------------------------------------- transcripts
 
 _cache = {}  # path -> (mtime, size, info)
+_cache_dirty = False
+CACHE_FILE = Path.home() / ".cache" / "claude-dock" / "transcripts.json"
+CACHE_VERSION = 2
+
+
+def load_cache():
+    """Traz do disco o que já foi lido em execuções anteriores (abre sem reler tudo)."""
+    try:
+        data = json.loads(CACHE_FILE.read_text())
+    except (OSError, ValueError):
+        return
+    if not isinstance(data, dict) or data.get("v") != CACHE_VERSION:
+        return
+    for key, entry in (data.get("files") or {}).items():
+        try:
+            mtime, size, info = entry
+        except (TypeError, ValueError):
+            continue
+        if isinstance(info, dict):
+            _cache.setdefault(Path(key), (mtime, size, info))
+
+
+def save_cache():
+    global _cache_dirty
+    if not _cache_dirty:
+        return
+    _cache_dirty = False
+    files = {str(k): list(v) for k, v in list(_cache.items()) if k.exists()}
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CACHE_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps({"v": CACHE_VERSION, "files": files}, ensure_ascii=False))
+        os.replace(tmp, CACHE_FILE)
+    except OSError:
+        pass
 
 
 def _text_of(content):
@@ -123,12 +159,18 @@ def transcript_info(path):
         return hit[2]
 
     info = {"cwd": None, "branch": None, "first": None, "title": None,
-            "custom_title": None, "mtime": st.st_mtime}
+            "custom_title": None, "tokens": None, "mtime": st.st_mtime, "size": st.st_size}
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             for i, line in enumerate(f):
-                if i >= HEAD_LINES and info["first"]:
+                if info["first"] and info["cwd"] and (info["branch"] or i >= HEAD_LINES):
                     break
+                if i >= HEAD_SCAN_MAX:
+                    break
+                # só decodifica o que pode trazer algo que ainda falta (linhas de
+                # ferramenta chegam a ter megabytes)
+                if info["cwd"] and info["branch"] and '"user"' not in line:
+                    continue
                 try:
                     obj = json.loads(line)
                 except ValueError:
@@ -143,6 +185,16 @@ def transcript_info(path):
             f.seek(max(0, st.st_size - TAIL_BYTES))
             tail = f.read().decode("utf-8", errors="replace").splitlines()
         for line in reversed(tail):
+            if info["tokens"] is None and '"usage"' in line and '"assistant"' in line:
+                # contexto ocupado no fim da conversa = entrada + cache da última resposta
+                try:
+                    msg = json.loads(line).get("message") or {}
+                    u = msg.get("usage") if isinstance(msg, dict) else None
+                    if isinstance(u, dict):
+                        info["tokens"] = (u.get("input_tokens") or 0) + (u.get("cache_read_input_tokens") or 0) \
+                            + (u.get("cache_creation_input_tokens") or 0) or None
+                except (ValueError, AttributeError):
+                    pass
             if '"ai-title"' not in line and '"custom-title"' not in line:
                 continue
             try:
@@ -153,13 +205,28 @@ def transcript_info(path):
                 info["custom_title"] = obj.get("customTitle")
             if obj.get("type") == "ai-title" and not info["title"]:
                 info["title"] = obj.get("aiTitle")
-            if info["title"] and info["custom_title"]:
+            if info["title"] and info["custom_title"] and info["tokens"] is not None:
                 break
     except OSError:
         return None
 
+    global _cache_dirty
     _cache[path] = (st.st_mtime, st.st_size, info)
+    _cache_dirty = True
     return info
+
+
+def warm_all():
+    """Lê (ou confirma no cache) todos os transcripts; roda numa thread."""
+    try:
+        files = list(PROJECTS_DIR.glob("*/*.jsonl"))
+    except OSError:
+        return
+    for p in files:
+        try:
+            transcript_info(p)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def _transcript_path(session_id):

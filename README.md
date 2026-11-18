@@ -5,7 +5,7 @@
 <h1 align="center">Claude Dock</h1>
 
 <p align="center">
-  <strong>Every <a href="https://claude.com/claude-code">Claude Code</a> session you have open, and how much of your plan is left, one hover away.</strong><br>
+  <strong>Every <a href="https://claude.com/claude-code">Claude Code</a> session you have open, your whole conversation history and how much of your plan is left, one hover away.</strong><br>
   A small island under the GNOME top bar that opens into a panel when you point at it.
 </p>
 
@@ -52,7 +52,7 @@ On the right is your plan usage. The 5-hour session (when your account has one) 
   <img src="docs/en/recent.png" width="860" alt="Recent sessions grouped by day, filtered by the word api with the match highlighted">
 </p>
 
-The Recent tab lists past sessions grouped by day, with their real titles. Type to filter by title or project and the matching text lights up. Clicking one opens a terminal in that folder running `claude --resume` for that session.
+The Recent tab lists past sessions grouped by day, with their real titles. Type to filter by title or project and the matching text lights up. Clicking one opens a terminal in that folder running `claude --resume` for that session, or copies the command if you set it up that way in the settings.
 
 ### Start a new one
 
@@ -68,7 +68,65 @@ The + button lists the folders you've used recently. Pick one, or browse to any 
   <img src="docs/en/settings.png" width="860" alt="Settings sheet with switches">
 </p>
 
-The gear opens the settings. You can hide the usage on the island, turn off update alerts and turn each part of the usage panel on or off: plan badge, rings, 5h session, week, time marker and reset times. Two extras start hidden and can be switched on there: weekly limits per model, and a breakdown of where your usage went (Claude Code, chats, Cowork). The language follows your system, and you can change it in the same place.
+The gear opens the settings. The first option picks what clicking a recent session does: open the terminal, copy `claude --resume` or copy `/resume`. You can also hide the usage on the island, turn off update alerts and turn each part of the usage panel on or off: plan badge, rings, 5h session, week, time marker and reset times. Two extras start hidden and can be switched on there: weekly limits per model, and a breakdown of where your usage went (Claude Code, chats, Cowork). The language follows your system, and you can change it in the same place.
+
+## 🗂️ Your whole history, organized
+
+Every project has a hidden cost: **warming the context back up**. Each time you start Claude from scratch, time goes into explaining the architecture again, saying where you stopped, pointing at the files that matter. When the terminal closes, the context it just built goes with it.
+
+Claude Code already saves every conversation so you can resume it. The hard part is finding the right one among dozens of IDs that tell you nothing. That's why Claude Dock comes with a window holding every conversation you've ever had.
+
+> **Resuming takes seconds. Starting over takes hours.**
+
+<p align="center">
+  <img src="docs/en/library.png" width="860" alt="Sessions window with projects on the side and conversation cards grouped by project">
+</p>
+
+It opens from "See all sessions", pinned to the bottom of the panel. Conversations show up as cards grouped by project, each with its title, the first message or your note, the branch, how full the context was and when it was last active. Sessions running right now get a status badge, and clicking one takes you to its window instead of opening a second copy.
+
+### Find it by the word you remember
+
+<p align="center">
+  <img src="docs/en/library-search.png" width="860" alt="Search that found a session by a word in the middle of the conversation">
+</p>
+
+Search filters by name, note, project and branch as you type. A moment later it also looks inside what was actually said and shows the passage it found. That session where you talked about the heap snapshot is one word away.
+
+### Your way: open or copy
+
+<p align="center">
+  <img src="docs/en/library-menu.png" width="860" alt="Right click menu with resume, copy claude --resume, copy /resume, copy ID, rename, favorite and trash">
+</p>
+
+You pick what a click does: open a terminal with the conversation resumed, copy `cd folder && claude --resume id` to paste into any terminal, or copy `/resume id` to paste into a Claude that's already running. The choice applies to the panel and the window. Right click keeps all three at hand, along with rename, favorite and trash.
+
+<p align="center">
+  <img src="docs/en/library-settings.png" width="860" alt="Window settings with the click choice and the automatic trash">
+</p>
+
+### Tidy up several at once
+
+<p align="center">
+  <img src="docs/en/library-select.png" width="860" alt="Three selected cards and the black bar with favorite and move to trash">
+</p>
+
+Tick a card's circle, hold Shift to grab a range, and a bar shows up at the bottom to favorite them or send them all to the trash. Every action has Undo in case you change your mind. The trash only hides: the conversation files stay in `~/.claude` and come back whenever you want. You can also turn on the automatic trash for sessions untouched for 30, 60 or 90 days (favorites never go).
+
+| | |
+|---|---|
+| 🔁 **One click resume** | Opens the terminal in the right folder, or copies the command, whichever you prefer |
+| 📋 **Copy format** | `claude --resume` for the terminal or `/resume` for inside Claude |
+| 🏷️ **Names and notes** | A human name for each conversation and a note on where you stopped |
+| ⭐ **Favorites** | The conversations you use every day, always at hand |
+| 🔍 **Full text search** | Finds sessions by what was said in them, with the passage highlighted |
+| 🟢 **Open now** | Running sessions are marked and clicking goes to their window |
+| 🌡️ **Context at a glance** | Conversations close to a full context show in yellow and red |
+| ↕️ **Sorting** | Most recent, oldest, largest context, largest file or name |
+| ☑️ **Bulk selection** | Favorite or trash several at once, with Undo |
+| 🗑️ **Safe trash** | Only hides, nothing is deleted from disk. Optional automatic trash |
+| ⌨️ **Keyboard** | `/` searches, arrows move through the cards, Enter does what a click does, `c` copies, `e` edits, `f` stars |
+
+If you use [Claude Sessions Manager](https://github.com/krugerrgabriel/claude-sessions-manager), the window reads and writes the same file it does, and the cards follow the same layout. Names, notes, favorites and the trash stay the same in both, so you can use one, the other or both. Without it, the dock keeps its own copy in the same format.
 
 ## Features
 
@@ -76,10 +134,11 @@ The gear opens the settings. You can hide the usage on the island, turn off upda
 |---|---|
 | Live sessions | Reads what Claude Code already writes to `~/.claude`. There is nothing to configure and no hook to install |
 | Jump to the window | Matches each session to its window by process tree and title, then raises it with `wmctrl` |
-| Resume from history | Opens a terminal in the right folder with `claude --resume <id>` |
+| Resume from history | Opens a terminal in the right folder with `claude --resume <id>`, or copies `claude --resume` or `/resume` |
 | New session | Recent folders, or any folder through the file picker |
 | Plan usage | 5-hour and weekly limits, reset countdown, per-model limits and where it went |
 | Search | Filters past sessions by title or project and highlights the match |
+| All sessions | A window with your whole history as cards: names, notes, favorites, trash, bulk selection, sorting and search inside the conversations |
 | Stays out of the way | Clicks pass through everywhere except the island and the open panel. Keyboard focus goes back to your previous window when the panel closes |
 | Light | Python standard library plus the GTK and WebKit your desktop already ships. Usage is fetched every 2 minutes, or right away when you hit refresh |
 | Updates itself | Shows when a new release is out and installs it with one click |
@@ -136,14 +195,17 @@ Claude Dock checks GitHub for a new release when it starts and every 6 hours aft
 | Point at the island | The panel opens after a short pause, so passing by on the way to the clock doesn't trigger it |
 | Move the mouse away | The panel closes |
 | Click an open session | Its window comes to the front |
-| Click a recent session | A terminal opens in that folder and resumes it |
+| Click a recent session | A terminal opens in that folder and resumes it. In the settings you can switch this to copying `claude --resume` or `/resume`, and the sessions window follows the same choice |
 | + | New session in a recent folder or any folder you pick |
 | Gear | Settings |
 | Refresh arrow | Fetches your usage right now |
+| See all sessions | Opens the sessions window, or brings it to the front if it's already open |
+| `/` in the sessions window | Jumps to search. Arrow keys move between cards, Enter does the same as a click, `e` edits, `f` stars, Delete sends to the trash, `c` copies the resume command |
+| Right click on a session | Menu with resume, copy `claude --resume`, `/resume` or the ID, rename, favorite, select and trash |
 
 ## Settings file
 
-Everything in the settings sheet is saved to `~/.config/claude-dock/config.json`. One key only exists in the file:
+Everything in the settings sheet is saved to `~/.config/claude-dock/config.json`. Some keys only exist in the file:
 
 ```json
 {
@@ -152,6 +214,8 @@ Everything in the settings sheet is saved to `~/.config/claude-dock/config.json`
 ```
 
 `terminal` picks the terminal for new and resumed sessions: `ghostty`, `kitty`, `wezterm`, `alacritty`, `ptyxis`, `gnome-terminal` or `konsole`. Without it, Claude Dock uses the first one it finds in that order. Restart the dock after editing the file by hand.
+
+Claude Dock finds Claude Sessions Manager through the Apache config. If you installed it somewhere unusual, set `sessionsManagerDir` to its install folder (the one with `app.wsgi` and `data/`).
 
 ## How it works
 
@@ -165,6 +229,7 @@ claude_dock/   sessions.py   live sessions and history, read straight from disk
                windows.py    finds and raises the right window (wmctrl)
                launch.py     opens a terminal running claude or claude --resume
                usage.py      plan usage from api.anthropic.com
+               library.py    every conversation, names and notes, search inside transcripts
                app.py        transparent GTK window under the top bar, with a WebKit view
                ui/           the island and the panel (HTML, CSS, JS)
 ```
@@ -173,7 +238,7 @@ The window is transparent and has a fixed size. The page tells the Python side w
 
 ## 🔒 Privacy
 
-Session data stays on your machine. Claude Dock makes two network requests. One is the usage check, `GET https://api.anthropic.com/api/oauth/usage`, sent with the token Claude Code already stores in `~/.claude/.credentials.json`. The other asks GitHub for the latest release (`api.github.com/repos/krugerrgabriel/claude-dock/releases/latest`) and sends nothing about you. From your transcripts, Claude Dock reads the session title, the folder, the git branch and the first message (used as a label when a session has no title yet). It never writes anything inside `~/.claude`.
+Session data stays on your machine. Claude Dock makes two network requests. One is the usage check, `GET https://api.anthropic.com/api/oauth/usage`, sent with the token Claude Code already stores in `~/.claude/.credentials.json`. The other asks GitHub for the latest release (`api.github.com/repos/krugerrgabriel/claude-dock/releases/latest`) and sends nothing about you. From your transcripts, Claude Dock reads the session title, the folder, the git branch and the first message (used as a label when a session has no title yet). The sessions window also reads the transcripts in full when you search inside them, on your machine. Claude Dock never writes anything inside `~/.claude`: names, notes, favorites and the trash go to Claude Sessions Manager's `data/metadata.json` when it's installed, or to `~/.local/share/claude-dock/metadata.json` when it isn't. The trash only hides a session. Its file stays where it was. To open fast, the dock keeps what it read from each transcript (title, folder, branch, first message, size) in `~/.cache/claude-dock/transcripts.json`. You can delete that file anytime.
 
 ## Troubleshooting
 
