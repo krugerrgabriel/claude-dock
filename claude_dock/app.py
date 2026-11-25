@@ -36,6 +36,7 @@ UPDATE_INTERVAL_S = 6 * 3600
 UPDATE_TIMEOUT_S = 120        # sem reabrir nesse tempo, considera que a atualização falhou
 LIVE_INTERVAL_MS = 1500
 HISTORY_INTERVAL_S = 8
+PLACE_CHECK_S = 3
 HISTORY_IDLE_S = 30        # fechado: mantém o histórico morno sem pesar
 
 
@@ -151,6 +152,9 @@ class Dock:
 
         self._place()
         Gdk.Screen.get_default().connect("monitors-changed", lambda *_: self._place())
+        # No login o dock pode subir antes do GNOME reservar a faixa da barra de cima
+        # (área de trabalho ainda começa em y=0); reconfere a posição de tempos em tempos.
+        GLib.timeout_add_seconds(PLACE_CHECK_S, lambda: self._place() or True)
         win.show_all()
         threading.Thread(target=self._warm, daemon=True).start()
         GLib.timeout_add(LIVE_INTERVAL_MS, self._tick)
@@ -180,7 +184,10 @@ class Dock:
         mon = display.get_primary_monitor() or display.get_monitor(0)
         geo, work = mon.get_geometry(), mon.get_workarea()
         top = work.y if work.y > geo.y else geo.y
-        self.win.move(geo.x + (geo.width - WIDTH) // 2, top)
+        pos = (geo.x + (geo.width - WIDTH) // 2, top)
+        if pos != getattr(self, "_placed", None):
+            self._placed = pos
+            self.win.move(*pos)
 
     # ---------------------------------------------------------------- uso
 
