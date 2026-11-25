@@ -220,6 +220,8 @@ class Store:
                 "project": os.path.basename(cwd.rstrip("/")) or p.parent.name,
                 "title": info.get("custom_title") or info.get("title") or "",
                 "first": info.get("first") or "",
+                "last": info.get("last") or "",       # "onde parei" simples
+                "lastId": info.get("lastId"),
                 "branch": info.get("branch"),
                 "tokens": info.get("tokens"),
                 "size": info.get("size") or 0,

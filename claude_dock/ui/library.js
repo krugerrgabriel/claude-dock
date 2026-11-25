@@ -224,6 +224,11 @@
     else if (s.notes) desc = `<div class="row-desc note">${mark(s.notes, q)}</div>`;
     else if (s.first && s.first !== title) desc = `<div class="row-desc">${mark(s.first, q)}</div>`;
 
+    // onde parei: o resumo da IA (se houver) ou a última fala do Claude, encurtada
+    const recapText = data.recapMode === "off" ? "" : ((data.recaps || {})[s.id] || s.last || "");
+    const recap = recapText && !s.deleted
+      ? `<div class="row-recap" title="${esc(recapText)}"><b>${esc(t("l_recap"))}</b>${esc(recapText)}</div>` : "";
+
     const chips = [];
     if (flat) chips.push(`<span class="chip proj" title="${esc(short(s.cwd))}"><i style="background:hsl(${hue(s.project)} 62% 55%)"></i>${mark(s.project, q)}</span>`);
     if (s.branch && s.branch !== "HEAD") chips.push(`<span class="chip" title="${esc(t("l_branchTip"))}">${icon("branch")}${mark(s.branch, q)}</span>`);
@@ -257,6 +262,7 @@
         <button class="pick" data-act="pick" title="${t("l_select")}">${icon("check")}</button>
         ${live ? `<div class="card-live">${hostTile(live.host)}<span class="badge ${c}">${statusLabel(c)}</span><span class="host-name">${esc((live.host && live.host.label) || "")}</span></div>` : ""}
         <div class="row-title ${title ? "" : "untitled"}" title="${esc(title || s.first || "")}">${s.favorite ? icon("star").replace("<svg", '<svg class="star"') : ""}<span>${mark(title || t("l_untitled"), q)}</span></div>
+        ${recap}
         ${desc}
         <span class="card-id" title="${esc(s.id)}">${s.id}</span>
         <div class="chips">${chips.join("")}</div>
@@ -590,42 +596,9 @@
   $("#scrim").addEventListener("click", closeDialogs);
 
   // -------------------------------------------------------- configurações
-  const AUTO = [0, 30, 60, 90];
-  const CLICKS = ["open", "copyCli", "copySlash"];
-  function renderSettings() {
-    const cm = clickMode();
-    $("#click-action").style.setProperty("--n", CLICKS.length);
-    $("#click-action").innerHTML = CLICKS.map((m) =>
-      `<button data-click="${m}" class="${m === cm ? "on" : ""}">${t(`c_${m}`)}</button>`).join("");
-    $("#click-hint").innerHTML = t(`c_${cm}Hint`);
-    const cur = data.autoTrashDays || 0;
-    const opts = AUTO.includes(cur) ? AUTO : [...AUTO, cur].sort((a, b) => a - b);
-    $("#auto-trash").style.setProperty("--n", opts.length);
-    $("#auto-trash").innerHTML = opts.map((d) =>
-      `<button data-days="${d}" class="${d === cur ? "on" : ""}">${d ? t("l_days", { n: d }) : t("l_off")}</button>`).join("");
-    $("#auto-trash-hint").textContent = cur ? t("l_autoHint", { n: cur }) : t("l_autoHintOff");
-    $("#store-box").innerHTML = data.shared
-      ? `${t("l_storeShared")}${data.managerUrl ? `<br><button id="open-manager">${t("l_openManager")}</button>` : ""}`
-      : t("l_storeOwn");
-  }
-  $("#click-action").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-click]");
-    if (!b) return;
-    data.clickAction = b.dataset.click;
-    renderSettings();
-    lastSig = null; renderList(); // tooltips do Copiar mudam de formato
-    post("clickAction", { value: data.clickAction });
-  });
-  $("#auto-trash").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-days]");
-    if (!b) return;
-    data.autoTrashDays = Number(b.dataset.days);
-    renderSettings();
-    post("autoTrash", { days: data.autoTrashDays });
-  });
-  $("#store-box").addEventListener("click", (e) => { if (e.target.id === "open-manager") post("openManager"); });
-  $("#settings-btn").addEventListener("click", () => { renderSettings(); openDialog("#settings"); });
-  $("#sync").addEventListener("click", () => { renderSettings(); openDialog("#settings"); });
+  // tudo fica na janela de configurações (a mesma da engrenagem do dock)
+  $("#settings-btn").addEventListener("click", () => post("openSettings"));
+  $("#sync").addEventListener("click", () => post("openSettings", { section: "sessions" }));
 
   // ------------------------------------------------------------- ordenação
   const SORTS = ["recent", "oldest", "tokens", "size", "name"];
@@ -795,7 +768,6 @@
     applyStatic();
     if (ui.project && !data.items.some((s) => projectKey(s) === ui.project)) ui.project = null;
     render();
-    if (!$("#settings").hidden) renderSettings();
   };
 
   setInterval(() => { if (!body.classList.contains("dialog-open")) $$(".when").forEach((el) => {
@@ -805,7 +777,7 @@
 
   window.libDebug = (cmd) => {
     if (cmd.startsWith("q:")) { $("#q").value = cmd.slice(2); $("#q").dispatchEvent(new Event("input")); }
-    if (cmd === "settings") $("#settings-btn").click();
+    if (cmd === "settings") post("openSettings");
   };
 
   // pré-visualização no navegador (prints do README): library.html?lang=pt&view=fav&q=...
@@ -822,7 +794,6 @@
     }
     if (params.get("sel")) { params.get("sel").split(",").forEach((i) => ui.selected.add(demo.items[Number(i)].id)); renderList(); }
     if (params.get("edit")) openEditor(demo.items[Number(params.get("edit"))]);
-    if (params.get("settings")) { renderSettings(); openDialog("#settings"); }
   }
 
   post("ready");

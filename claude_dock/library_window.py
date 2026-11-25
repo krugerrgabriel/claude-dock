@@ -12,7 +12,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("WebKit2", "4.1")
-from gi.repository import Gdk, GdkX11, Gio, GLib, Gtk, WebKit2  # noqa: E402
+from gi.repository import Gdk, GdkX11, GLib, Gtk, WebKit2  # noqa: E402
 
 from . import launch, library, sessions, windows  # noqa: E402
 
@@ -142,16 +142,29 @@ class LibraryWindow:
             "metaError": self.meta_error,
             "shared": self.store.shared,
             "managerUrl": (self.store.manager or {}).get("url"),
-            "autoTrashDays": self.store.load_settings()["auto_trash_days"],
             "lang": self.dock.lang(),
             "home": str(Path.home()),
             "undo": bool(self.undo),
             "prefs": self.dock.config.get("library") or {},
             "clickAction": self.dock.click_action(),
+            "recapMode": self.dock.recap_mode(),
+            "recaps": self._recaps(),
         }, ensure_ascii=False)
         if payload != self.last_payload:
             self.last_payload = payload
             self._js(f"window.libUpdate && window.libUpdate({payload})")
+
+    def _recaps(self):
+        """Modo IA: id -> resumo, só dos que valem pra versão atual da conversa."""
+        if self.dock.recap_mode() != "ai":
+            return {}
+        lang = self.dock.lang()
+        out = {}
+        for s in self.items:
+            text = self.dock.recapper.text(s["id"], s.get("lastId"), lang)
+            if text:
+                out[s["id"]] = text
+        return out
 
     def _js(self, code):
         if not self.closed:
@@ -230,12 +243,6 @@ class LibraryWindow:
         elif kind == "search":
             self.search_gen = int(msg.get("gen") or 0)
             self._search(msg.get("q") or "", self.search_gen)
-        elif kind == "autoTrash":
-            try:
-                self.store.save_settings(int(msg.get("days") or 0))
-            except (OSError, ValueError, TypeError):
-                pass
-            self.refresh()
         elif kind == "pref":
             key, value = msg.get("key"), msg.get("value")
             if key in ("sort", "collapsed", "groupBy") and isinstance(value, (str, list)):
@@ -250,10 +257,6 @@ class LibraryWindow:
                 text = item["id"] if mode == "id" else launch.resume_text(
                     item["id"], item["cwd"], "copySlash" if mode == "copySlash" else "copyCli")
                 copy_to_clipboard(text)
-        elif kind == "clickAction":
-            self.dock._set_config("clickAction", msg.get("value"))
-        elif kind == "openManager":
-            url = (self.store.manager or {}).get("url")
-            if url:
-                Gio.AppInfo.launch_default_for_uri(url, None)
+        elif kind == "openSettings":
+            self.dock.open_settings(msg.get("section"))
 

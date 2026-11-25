@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Dock Settings</title>
+<link rel="stylesheet" href="settings.css">
+<script src="settings-i18n.js"></script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-general" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></symbol>
+      <symbol id="i-alerts" viewBox="0 0 24 24"><path d="M18 15.5V11a6 6 0 10-12 0v4.5L4.5 17.5h15zM10 20.5a2.2 2.2 0 004 0"/></symbol>
+      <symbol id="i-ask" viewBox="0 0 24 24"><path d="M5.5 8l4 4-4 4M12 16.5h6.5"/></symbol>
+      <symbol id="i-intelligence" viewBox="0 0 24 24"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9zM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></symbol>
+      <symbol id="i-usage" viewBox="0 0 24 24"><path d="M6 19.5V13M12 19.5V5M18 19.5v-9"/></symbol>
+      <symbol id="i-sessions" viewBox="0 0 24 24"><path d="M4.5 6.5h15M4.5 12h15M4.5 17.5h9"/></symbol>
+      <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 15.5H3zM12 10v4.2M12 17v.01"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.01"/></symbol>
+      <symbol id="i-chev" viewBox="0 0 24 24"><path d="M8 10l4 4 4-4"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 15.5V11a6 6 0 10-12 0v4.5L4.5 17.5h15zM10 20.5a2.2 2.2 0 004 0"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="tint"></div>
+
+  <div class="app">
+    <aside class="side">
+      <header class="side-head">
+        <h1 data-i18n="title"></h1>
+        <p id="side-sub"></p>
+      </header>
+      <nav id="nav" class="nav-list"></nav>
+      <footer class="side-foot" id="side-foot"></footer>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="page" id="page"></div>
+    </main>
+  </div>
+
+<script src="settings-demo.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

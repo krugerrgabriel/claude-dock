@@ -8,6 +8,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 
 CLAUDE_DIR = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
@@ -17,6 +18,7 @@ PROJECTS_DIR = CLAUDE_DIR / "projects"
 HEAD_LINES = 400          # linhas lidas do começo do transcript (cwd, 1ª mensagem)
 HEAD_SCAN_MAX = 3000      # teto pra sessões sem nenhuma mensagem do usuário
 TAIL_BYTES = 256 * 1024   # bytes lidos do fim (título mais recente)
+LAST_SCAN_MAX = 2 * 1024 * 1024  # teto pra achar a última fala (anexos e compactação vêm depois dela)
 HISTORY_LIMIT = 60
 
 # comm do processo ancestral -> (chave, rótulo)
@@ -95,7 +97,7 @@ def find_host(pid):
 _cache = {}  # path -> (mtime, size, info)
 _cache_dirty = False
 CACHE_FILE = Path.home() / ".cache" / "claude-dock" / "transcripts.json"
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 
 
 def load_cache():
@@ -148,8 +150,71 @@ def _clean_prompt(text):
     return " ".join(text.split())[:160]
 
 
+RECAP_MAX = 140
+
+
+def recap_line(text):
+    """"Onde parei" simples: a primeira frase (ou duas, se a primeira for curta
+    demais, tipo "Pronto.") da última fala do Claude, sem markdown."""
+    lines, heads = [], []
+    for ln in (text or "").splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith("```") or ln.startswith("|"):
+            continue
+        if re.match(r"#{1,6}\s", ln):
+            heads.append(ln.lstrip("#").strip())   # título só serve se não houver mais nada
+            continue
+        ln = re.sub(r"^([-*+•]\s+|\d+[.)]\s+|>\s*)", "", ln)
+        lines.append(ln)
+    lines = lines or heads
+    flat = " ".join(" ".join(lines).split())
+    flat = re.sub(r"\*\*|__|`", "", flat)
+    if not flat:
+        return None
+    out = ""
+    for sent in re.split(r"(?<=[.!?:])\s+", flat):
+        out = f"{out} {sent}".strip()
+        if len(out) >= 40:
+            break
+    if len(out) > RECAP_MAX:
+        cut = out[:RECAP_MAX - 1]
+        out = (cut.rsplit(" ", 1)[0] if " " in cut[60:] else cut).rstrip(" ,;:-") + "…"
+    return out
+
+
+def _assistant_text(obj):
+    """Texto de uma linha `assistant` do transcript (None se só tem ferramenta)."""
+    if obj.get("type") != "assistant" or obj.get("isSidechain") or obj.get("isApiErrorMessage"):
+        return None
+    msg = obj.get("message") or {}
+    content = msg.get("content") if isinstance(msg, dict) else None
+    if isinstance(content, str):
+        return content.strip() or None
+    parts = [p.get("text") or "" for p in content or [] if isinstance(p, dict) and p.get("type") == "text"]
+    return "\n".join(parts).strip() or None
+
+
+def _find_last(path, size):
+    """Última fala do Claude além do tail: lê pra trás em blocos até LAST_SCAN_MAX."""
+    with open(path, "rb") as f:
+        f.seek(max(0, size - LAST_SCAN_MAX))
+        lines = f.read(max(0, LAST_SCAN_MAX - TAIL_BYTES + 65536)).decode("utf-8", errors="replace").splitlines()
+    for line in reversed(lines):
+        if '"assistant"' not in line or '"text"' not in line:
+            continue
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        text = _assistant_text(obj) if isinstance(obj, dict) else None
+        if text:
+            return recap_line(text), obj.get("uuid")
+    return None, None
+
+
 def transcript_info(path):
-    """cwd, branch, 1ª mensagem e título (ai-title/custom-title) de um .jsonl."""
+    """cwd, branch, 1ª mensagem, título (ai-title/custom-title) e a última fala
+    do Claude (`last`, com o uuid em `lastId`) de um .jsonl."""
     try:
         st = path.stat()
     except OSError:
@@ -159,7 +224,9 @@ def transcript_info(path):
         return hit[2]
 
     info = {"cwd": None, "branch": None, "first": None, "title": None,
-            "custom_title": None, "tokens": None, "mtime": st.st_mtime, "size": st.st_size}
+            "custom_title": None, "tokens": None, "last": None, "lastId": None,
+            "mtime": st.st_mtime, "size": st.st_size}
+    last_done = False
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             for i, line in enumerate(f):
@@ -195,6 +262,15 @@ def transcript_info(path):
                             + (u.get("cache_creation_input_tokens") or 0) or None
                 except (ValueError, AttributeError):
                     pass
+            if not last_done and '"assistant"' in line and '"text"' in line:
+                try:
+                    obj = json.loads(line)
+                    text = _assistant_text(obj) if isinstance(obj, dict) else None
+                except ValueError:
+                    text = None
+                if text:
+                    info["last"], info["lastId"] = recap_line(text), obj.get("uuid")
+                    last_done = True
             if '"ai-title"' not in line and '"custom-title"' not in line:
                 continue
             try:
@@ -205,8 +281,10 @@ def transcript_info(path):
                 info["custom_title"] = obj.get("customTitle")
             if obj.get("type") == "ai-title" and not info["title"]:
                 info["title"] = obj.get("aiTitle")
-            if info["title"] and info["custom_title"] and info["tokens"] is not None:
+            if info["title"] and info["custom_title"] and info["tokens"] is not None and last_done:
                 break
+        if not last_done and st.st_size > TAIL_BYTES:
+            info["last"], info["lastId"] = _find_last(path, st.st_size)
     except OSError:
         return None
 
@@ -269,7 +347,11 @@ def live_sessions():
             "title": _display_title(info, None),  # None = a UI mostra "Nova sessão"
             "aiTitle": (info or {}).get("title"),
             "branch": (info or {}).get("branch"),
+            "last": (info or {}).get("last"),      # "onde parei" simples
+            "lastId": (info or {}).get("lastId"),
             "status": d.get("status") or "idle",
+            # motivo da espera ("permission", "input needed"...); só existe com status waiting
+            "waitingFor": d.get("waitingFor") if d.get("status") == "waiting" else None,
             "statusSince": (d.get("statusUpdatedAt") or d.get("startedAt") or 0) / 1000,
             "startedAt": (d.get("startedAt") or 0) / 1000,
             "kind": d.get("kind"),

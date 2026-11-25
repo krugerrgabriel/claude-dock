@@ -29,7 +29,8 @@ def _creds():
 def _window(raw):
     if not isinstance(raw, dict) or raw.get("utilization") is None:
         return None
-    return {"pct": round(raw["utilization"]), "resetsAt": raw.get("resets_at")}
+    # util = valor sem arredondar, usado na previsão de limite
+    return {"pct": round(raw["utilization"]), "util": raw["utilization"], "resetsAt": raw.get("resets_at")}
 
 
 def _parse(data, creds):
